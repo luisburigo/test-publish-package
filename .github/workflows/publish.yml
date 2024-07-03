@@ -1,0 +1,60 @@
+name: Publish NPM Package
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📋 Checkout
+        uses: actions/checkout@v4
+
+      # Setup package manager to pnpm
+      - uses: pnpm/action-setup@v4
+        name: ⚙️ PNPM Setup
+        with:
+          version: 8
+          run_install: false
+
+      # Install the node.js
+      - name: ⚙️ Node.js Setup
+        uses: actions/setup-node@v4
+        with:
+          cache: pnpm
+          node-version: 20
+          registry-url: https://npm.pkg.github.com/
+
+      # Install dependencies and ingest the lockfile
+      - name: 📦 Install dependencies
+        run: pnpm install
+
+      # Build package with pnpm
+      - name: 🔨 Build
+        run: pnpm build
+
+      # Publish package
+      - name: 🚀 Publish
+        shell: bash
+        run: pnpm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📋 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🚀 Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: "Release ${{ github.ref }}"
+          body: "Automated release for version ${{ github.ref }}"
+          draft: false
+          prerelease: false
